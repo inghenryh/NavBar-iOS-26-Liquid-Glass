@@ -6,6 +6,108 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+const _configuredThemeName = String.fromEnvironment(
+  'LIQUID_GLASS_THEME',
+  defaultValue: 'green',
+);
+const _configuredVariant = _configuredThemeName == 'blue'
+    ? LiquidGlassVariant.blue
+    : LiquidGlassVariant.green;
+
+enum LiquidGlassVariant { blue, green }
+
+extension on LiquidGlassVariant {
+  _LiquidNavPalette get palette => switch (this) {
+    LiquidGlassVariant.blue => _LiquidNavPalette.blue,
+    LiquidGlassVariant.green => _LiquidNavPalette.green,
+  };
+}
+
+@immutable
+class _LiquidNavPalette {
+  const _LiquidNavPalette({
+    required this.surfaceOpacity,
+    required this.lensMid,
+    required this.lensEnd,
+    required this.lensShadow,
+    required this.buttonShadow,
+    required this.buttonMid,
+    required this.buttonDeep,
+    required this.plusShadow,
+    required this.liquidBack,
+    required this.liquidFrontLight,
+    required this.liquidFrontMid,
+    required this.liquidFrontDeep,
+    required this.contactDark,
+    required this.contactLight,
+    required this.rippleTint,
+    required this.tabAccent,
+    required this.tabGlow,
+    required this.touchGlow,
+  });
+
+  static const blue = _LiquidNavPalette(
+    surfaceOpacity: 0.29,
+    lensMid: Color(0xFFEAF5FF),
+    lensEnd: Color(0xFFBDD9EF),
+    lensShadow: Color(0xFF4A91CC),
+    buttonShadow: Color(0x400A62B0),
+    buttonMid: Color(0xFF55B9FF),
+    buttonDeep: Color(0xFF087BEB),
+    plusShadow: Color(0x40004E92),
+    liquidBack: Color(0xFFBCEBFF),
+    liquidFrontLight: Color(0xFFB6EAFF),
+    liquidFrontMid: Color(0xFF0078E7),
+    liquidFrontDeep: Color(0xFF004FAE),
+    contactDark: Color(0xFF003B82),
+    contactLight: Color(0xFF58C7FF),
+    rippleTint: Color(0xFFD8F5FF),
+    tabAccent: Color(0xFF087BEB),
+    tabGlow: Color(0x280087FF),
+    touchGlow: Color(0xFF8EC9FF),
+  );
+
+  static const green = _LiquidNavPalette(
+    surfaceOpacity: 0.20,
+    lensMid: Color(0xFFEAF9F0),
+    lensEnd: Color(0xFFC7E9D0),
+    lensShadow: Color(0xFF2F9B55),
+    buttonShadow: Color(0x40013D12),
+    buttonMid: Color(0xFF59CF7B),
+    buttonDeep: Color(0xFF087D2A),
+    plusShadow: Color(0x4002551A),
+    liquidBack: Color(0xFFC7F1D1),
+    liquidFrontLight: Color(0xFFBCEFC9),
+    liquidFrontMid: Color(0xFF087D2A),
+    liquidFrontDeep: Color(0xFF02551A),
+    contactDark: Color(0xFF013D12),
+    contactLight: Color(0xFF59CF7B),
+    rippleTint: Color(0xFFDDF8E4),
+    tabAccent: Color(0xFF087D2A),
+    tabGlow: Color(0x28087D2A),
+    touchGlow: Color(0xFF8EDDA8),
+  );
+
+  final double surfaceOpacity;
+  final Color lensMid;
+  final Color lensEnd;
+  final Color lensShadow;
+  final Color buttonShadow;
+  final Color buttonMid;
+  final Color buttonDeep;
+  final Color plusShadow;
+  final Color liquidBack;
+  final Color liquidFrontLight;
+  final Color liquidFrontMid;
+  final Color liquidFrontDeep;
+  final Color contactDark;
+  final Color contactLight;
+  final Color rippleTint;
+  final Color tabAccent;
+  final Color tabGlow;
+  final Color touchGlow;
+}
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -20,17 +122,22 @@ void main() {
       systemNavigationBarContrastEnforced: false,
     ),
   );
-  runApp(const LiquidGlassDemoApp());
+  runApp(const LiquidGlassDemoApp(variant: _configuredVariant));
 }
 
 class LiquidGlassDemoApp extends StatelessWidget {
-  const LiquidGlassDemoApp({super.key});
+  const LiquidGlassDemoApp({
+    super.key,
+    this.variant = LiquidGlassVariant.green,
+  });
+
+  final LiquidGlassVariant variant;
 
   @override
   Widget build(BuildContext context) {
-    return const CupertinoApp(
+    return CupertinoApp(
       debugShowCheckedModeBanner: false,
-      theme: CupertinoThemeData(
+      theme: const CupertinoThemeData(
         brightness: Brightness.light,
         primaryColor: Color(0xFF007AFF),
         scaffoldBackgroundColor: Color(0xFFF2F6FA),
@@ -41,13 +148,18 @@ class LiquidGlassDemoApp extends StatelessWidget {
           ),
         ),
       ),
-      home: LiquidGlassDemoPage(),
+      home: LiquidGlassDemoPage(variant: variant),
     );
   }
 }
 
 class LiquidGlassDemoPage extends StatefulWidget {
-  const LiquidGlassDemoPage({super.key});
+  const LiquidGlassDemoPage({
+    super.key,
+    this.variant = LiquidGlassVariant.green,
+  });
+
+  final LiquidGlassVariant variant;
 
   @override
   State<LiquidGlassDemoPage> createState() => _LiquidGlassDemoPageState();
@@ -203,6 +315,7 @@ class _LiquidGlassDemoPageState extends State<LiquidGlassDemoPage> {
                 child: _LiquidGlassTabBar(
                   key: const ValueKey('liquid-glass-tab-bar'),
                   tabs: _tabs,
+                  palette: widget.variant.palette,
                   currentIndex: _selectedIndex,
                   reduceMotion: reduceMotion,
                   highContrast: MediaQuery.highContrastOf(context),
@@ -571,6 +684,7 @@ class _LiquidGlassTabBar extends StatefulWidget {
   const _LiquidGlassTabBar({
     super.key,
     required this.tabs,
+    required this.palette,
     required this.currentIndex,
     required this.onChanged,
     required this.onPrimaryPressed,
@@ -579,6 +693,7 @@ class _LiquidGlassTabBar extends StatefulWidget {
   });
 
   final List<_TabSpec> tabs;
+  final _LiquidNavPalette palette;
   final int currentIndex;
   final ValueChanged<int> onChanged;
   final VoidCallback onPrimaryPressed;
@@ -696,7 +811,9 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
 
   @override
   Widget build(BuildContext context) {
-    final fillOpacity = widget.highContrast ? 0.62 : 0.29;
+    final fillOpacity = widget.highContrast
+        ? 0.62
+        : widget.palette.surfaceOpacity;
 
     return SizedBox(
       height: 96,
@@ -760,6 +877,7 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                             fit: StackFit.expand,
                             children: [
                               DecoratedBox(
+                                key: const ValueKey('liquid-glass-surface'),
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(39),
                                   gradient: LinearGradient(
@@ -817,6 +935,7 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                 AnimatedBuilder(
                   animation: _selectionController,
                   child: _SelectionLens(
+                    palette: widget.palette,
                     highContrast: widget.highContrast,
                     reduceMotion: widget.reduceMotion,
                   ),
@@ -849,6 +968,7 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                         painter: _TouchGlowPainter(
                           touchX: _touchX,
                           touching: _touching,
+                          glowColor: widget.palette.touchGlow,
                         ),
                       ),
                     ),
@@ -870,6 +990,7 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                         child: _GlassTabButton(
                           key: ValueKey('glass-tab-$index'),
                           tab: tab,
+                          palette: widget.palette,
                           selected: index == widget.currentIndex,
                           pressed: index == _pressedIndex,
                           reduceMotion: widget.reduceMotion,
@@ -888,6 +1009,7 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                   height: primarySize,
                   child: _PrimaryGlassButton(
                     key: const ValueKey('liquid-primary-action'),
+                    palette: widget.palette,
                     reduceMotion: widget.reduceMotion,
                     highContrast: widget.highContrast,
                     onTap: widget.onPrimaryPressed,
@@ -904,10 +1026,12 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
 
 class _SelectionLens extends StatelessWidget {
   const _SelectionLens({
+    required this.palette,
     required this.highContrast,
     required this.reduceMotion,
   });
 
+  final _LiquidNavPalette palette;
   final bool highContrast;
   final bool reduceMotion;
 
@@ -921,8 +1045,8 @@ class _SelectionLens extends StatelessWidget {
           end: Alignment.bottomRight,
           colors: [
             Colors.white.withValues(alpha: highContrast ? 0.86 : 0.68),
-            const Color(0xFFEAF5FF).withValues(alpha: 0.46),
-            const Color(0xFFBDD9EF).withValues(alpha: 0.25),
+            palette.lensMid.withValues(alpha: 0.46),
+            palette.lensEnd.withValues(alpha: 0.25),
           ],
           stops: const [0, 0.56, 1],
         ),
@@ -932,7 +1056,7 @@ class _SelectionLens extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF4A91CC).withValues(alpha: 0.17),
+            color: palette.lensShadow.withValues(alpha: 0.17),
             blurRadius: 18,
             offset: const Offset(0, 7),
             spreadRadius: -4,
@@ -1066,11 +1190,13 @@ class _ActiveLensShimmerPainter extends CustomPainter {
 class _PrimaryGlassButton extends StatefulWidget {
   const _PrimaryGlassButton({
     super.key,
+    required this.palette,
     required this.reduceMotion,
     required this.highContrast,
     required this.onTap,
   });
 
+  final _LiquidNavPalette palette;
   final bool reduceMotion;
   final bool highContrast;
   final VoidCallback onTap;
@@ -1197,16 +1323,16 @@ class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
               children: [
                 RepaintBoundary(
                   child: DecoratedBox(
-                    decoration: const BoxDecoration(
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: Color(0x400A62B0),
+                          color: widget.palette.buttonShadow,
                           blurRadius: 24,
                           offset: Offset(0, 13),
                           spreadRadius: -5,
                         ),
-                        BoxShadow(
+                        const BoxShadow(
                           color: Color(0x66FFFFFF),
                           blurRadius: 8,
                           offset: Offset(-2, -3),
@@ -1226,8 +1352,12 @@ class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
                                 Colors.white.withValues(
                                   alpha: widget.highContrast ? 0.94 : 0.78,
                                 ),
-                                const Color(0xFF55B9FF).withValues(alpha: 0.68),
-                                const Color(0xFF087BEB).withValues(alpha: 0.88),
+                                widget.palette.buttonMid.withValues(
+                                  alpha: 0.68,
+                                ),
+                                widget.palette.buttonDeep.withValues(
+                                  alpha: 0.88,
+                                ),
                               ],
                               stops: const [0, 0.48, 1],
                             ),
@@ -1255,6 +1385,7 @@ class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
                             impact: _impactController,
                             touchOrigin: _touchOrigin,
                             highContrast: widget.highContrast,
+                            palette: widget.palette,
                           ),
                         ),
                       ),
@@ -1282,15 +1413,18 @@ class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
                     ),
                   ),
                 ),
-                const IgnorePointer(
+                IgnorePointer(
                   child: Center(
                     child: Icon(
                       CupertinoIcons.plus,
                       color: Colors.white,
                       size: 30,
                       shadows: [
-                        Shadow(color: Color(0x40004E92), blurRadius: 10),
-                        Shadow(color: Color(0x66FFFFFF), blurRadius: 4),
+                        Shadow(
+                          color: widget.palette.plusShadow,
+                          blurRadius: 10,
+                        ),
+                        const Shadow(color: Color(0x66FFFFFF), blurRadius: 4),
                       ],
                     ),
                   ),
@@ -1311,6 +1445,7 @@ class _PrimaryLiquidPainter extends CustomPainter {
     required this.impact,
     required this.touchOrigin,
     required this.highContrast,
+    required this.palette,
   }) : super(repaint: Listenable.merge([wave, pressure, impact, touchOrigin]));
 
   final Animation<double> wave;
@@ -1318,6 +1453,7 @@ class _PrimaryLiquidPainter extends CustomPainter {
   final Animation<double> impact;
   final ValueListenable<Offset> touchOrigin;
   final bool highContrast;
+  final _LiquidNavPalette palette;
 
   Path _wavePath({
     required Size size,
@@ -1382,7 +1518,7 @@ class _PrimaryLiquidPainter extends CustomPainter {
           end: Alignment.bottomCenter,
           colors: [
             Colors.white.withValues(alpha: highContrast ? 0.29 : 0.21),
-            const Color(0xFFBCEBFF).withValues(alpha: 0.11),
+            palette.liquidBack.withValues(alpha: 0.11),
           ],
         ).createShader(Offset.zero & size),
     );
@@ -1403,9 +1539,9 @@ class _PrimaryLiquidPainter extends CustomPainter {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            const Color(0xFFB6EAFF).withValues(alpha: 0.12),
-            const Color(0xFF0078E7).withValues(alpha: 0.32),
-            const Color(0xFF004FAE).withValues(alpha: 0.40),
+            palette.liquidFrontLight.withValues(alpha: 0.12),
+            palette.liquidFrontMid.withValues(alpha: 0.32),
+            palette.liquidFrontDeep.withValues(alpha: 0.40),
           ],
           stops: const [0, 0.58, 1],
         ).createShader(Offset.zero & size),
@@ -1444,8 +1580,8 @@ class _PrimaryLiquidPainter extends CustomPainter {
           ..shader =
               RadialGradient(
                 colors: [
-                  const Color(0xFF003B82).withValues(alpha: 0.29 * contact),
-                  const Color(0xFF58C7FF).withValues(alpha: 0.10 * contact),
+                  palette.contactDark.withValues(alpha: 0.29 * contact),
+                  palette.contactLight.withValues(alpha: 0.10 * contact),
                   Colors.transparent,
                 ],
               ).createShader(
@@ -1472,9 +1608,9 @@ class _PrimaryLiquidPainter extends CustomPainter {
           Paint()
             ..style = PaintingStyle.stroke
             ..strokeWidth = 1.1
-            ..color = const Color(
-              0xFFD8F5FF,
-            ).withValues(alpha: 0.38 * (1 - secondRippleT)),
+            ..color = palette.rippleTint.withValues(
+              alpha: 0.38 * (1 - secondRippleT),
+            ),
         );
       }
 
@@ -1491,13 +1627,15 @@ class _PrimaryLiquidPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _PrimaryLiquidPainter oldDelegate) =>
       oldDelegate.touchOrigin != touchOrigin ||
-      oldDelegate.highContrast != highContrast;
+      oldDelegate.highContrast != highContrast ||
+      oldDelegate.palette != palette;
 }
 
 class _GlassTabButton extends StatelessWidget {
   const _GlassTabButton({
     super.key,
     required this.tab,
+    required this.palette,
     required this.selected,
     required this.pressed,
     required this.reduceMotion,
@@ -1507,6 +1645,7 @@ class _GlassTabButton extends StatelessWidget {
   });
 
   final _TabSpec tab;
+  final _LiquidNavPalette palette;
   final bool selected;
   final bool pressed;
   final bool reduceMotion;
@@ -1516,7 +1655,7 @@ class _GlassTabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const active = Color(0xFF087BEB);
+    final active = palette.tabAccent;
     const inactive = Color(0xB82E343D);
     final duration = reduceMotion
         ? Duration.zero
@@ -1556,9 +1695,9 @@ class _GlassTabButton extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: selected
-                        ? const [
+                        ? [
                             BoxShadow(
-                              color: Color(0x280087FF),
+                              color: palette.tabGlow,
                               blurRadius: 12,
                               spreadRadius: 1,
                             ),
@@ -1741,10 +1880,15 @@ class _FeatureLandscapePainter extends CustomPainter {
 }
 
 class _TouchGlowPainter extends CustomPainter {
-  const _TouchGlowPainter({required this.touchX, required this.touching});
+  const _TouchGlowPainter({
+    required this.touchX,
+    required this.touching,
+    required this.glowColor,
+  });
 
   final double touchX;
   final bool touching;
+  final Color glowColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1758,7 +1902,7 @@ class _TouchGlowPainter extends CustomPainter {
         ..shader = RadialGradient(
           colors: [
             Colors.white.withValues(alpha: 0.36),
-            const Color(0xFF8EC9FF).withValues(alpha: 0.10),
+            glowColor.withValues(alpha: 0.10),
             Colors.white.withValues(alpha: 0),
           ],
         ).createShader(Rect.fromCircle(center: center, radius: 82));
@@ -1770,7 +1914,9 @@ class _TouchGlowPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _TouchGlowPainter oldDelegate) =>
-      oldDelegate.touchX != touchX || oldDelegate.touching != touching;
+      oldDelegate.touchX != touchX ||
+      oldDelegate.touching != touching ||
+      oldDelegate.glowColor != glowColor;
 }
 
 class _TabSpec {

@@ -1,5 +1,5 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flutter/widgets.dart';
 import 'package:navbar_ios_26_liquid_glass/main.dart';
 
 void main() {
@@ -15,6 +15,48 @@ void main() {
     expect(find.text('Descubre'), findsOneWidget);
     expect(find.byKey(const ValueKey('liquid-primary-action')), findsOneWidget);
     expect(find.byKey(const ValueKey('liquid-motion-layer')), findsOneWidget);
+  });
+
+  testWidgets('uses the green palette and 0.20 glass by default', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const LiquidGlassDemoApp());
+    await tester.pump();
+
+    final activeIcon = tester.widget<Icon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('glass-tab-0')),
+        matching: find.byIcon(CupertinoIcons.house_fill),
+      ),
+    );
+    final surface = tester.widget<DecoratedBox>(
+      find.byKey(const ValueKey('liquid-glass-surface')),
+    );
+    final gradient = (surface.decoration as BoxDecoration).gradient!;
+
+    expect(activeIcon.color, const Color(0xFF087D2A));
+    expect(gradient.colors[1].a, closeTo(0.20, 0.001));
+  });
+
+  testWidgets('keeps the original blue palette available', (tester) async {
+    await tester.pumpWidget(
+      const LiquidGlassDemoApp(variant: LiquidGlassVariant.blue),
+    );
+    await tester.pump();
+
+    final activeIcon = tester.widget<Icon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('glass-tab-0')),
+        matching: find.byIcon(CupertinoIcons.house_fill),
+      ),
+    );
+    final surface = tester.widget<DecoratedBox>(
+      find.byKey(const ValueKey('liquid-glass-surface')),
+    );
+    final gradient = (surface.decoration as BoxDecoration).gradient!;
+
+    expect(activeIcon.color, const Color(0xFF087BEB));
+    expect(gradient.colors[1].a, closeTo(0.29, 0.001));
   });
 
   testWidgets('changes pages when a tab is selected', (tester) async {
