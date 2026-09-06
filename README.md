@@ -1,16 +1,53 @@
-# untitled8
+# NavBar iOS 26 Liquid Glass
 
-A new Flutter project.
+Una demostración Flutter de una barra de navegación flotante inspirada en el
+lenguaje visual Liquid Glass de iOS 26, adaptada para ejecutarse también en
+Android.
 
-## Getting Started
+## Características
 
-This project is a starting point for a Flutter application.
+- Cápsula flotante con desenfoque real del contenido, tintes, borde luminoso y
+  sombras multicapa.
+- Lente activa animada con brillo especular continuo.
+- Botón principal central elevado con respuesta elástica y acciones rápidas.
+- Cambio de sección tocando o deslizando directamente sobre la barra.
+- Navegación lateral mediante `PageView`.
+- Compatibilidad con reducción de movimiento y alto contraste.
+- Animaciones aisladas con `RepaintBoundary` para no repintar continuamente el
+  desenfoque completo.
+- Sin dependencias visuales de terceros en tiempo de ejecución.
 
-A few resources to get you started if this is your first Flutter project:
+## Ejecutar
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+Requiere Flutter compatible con Dart 3.10 o posterior.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+```bash
+flutter pub get
+flutter run
+```
+
+Para evaluar la fluidez en un dispositivo físico usa profile mode:
+
+```bash
+flutter run --profile
+```
+
+## Validación
+
+```bash
+flutter analyze
+flutter test
+flutter build apk --profile
+```
+
+## Nota sobre Liquid Glass
+
+Esta es una recreación visual hecha con APIs de Flutter como `BackdropFilter`,
+gradientes, capas especulares y animaciones. En Android no utiliza el material
+propietario de Apple, por lo que busca una apariencia cercana manteniendo buen
+rendimiento y accesibilidad.
+
+El proyecto parte del ejemplo público
+[`vdev-youtube/untitled8`](https://github.com/vdev-youtube/untitled8) y conserva
+su historial y atribución mediante un fork. iOS y Liquid Glass son referencias
+de diseño de Apple; este proyecto no está afiliado con Apple.

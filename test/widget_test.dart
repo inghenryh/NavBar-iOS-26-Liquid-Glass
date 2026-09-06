@@ -1,30 +1,61 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:untitled8/main.dart';
+import 'package:navbar_ios_26_liquid_glass/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
-
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
+  testWidgets('shows the floating Liquid Glass menu', (tester) async {
+    await tester.pumpWidget(const LiquidGlassDemoApp());
     await tester.pump();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(find.byKey(const ValueKey('liquid-glass-tab-bar')), findsOneWidget);
+    expect(find.text('Inicio'), findsOneWidget);
+    expect(find.text('Videos'), findsOneWidget);
+    expect(find.text('Mensajes'), findsOneWidget);
+    expect(find.text('Código'), findsOneWidget);
+    expect(find.text('Descubre'), findsOneWidget);
+    expect(find.byKey(const ValueKey('liquid-primary-action')), findsOneWidget);
+  });
+
+  testWidgets('changes pages when a tab is selected', (tester) async {
+    await tester.pumpWidget(const LiquidGlassDemoApp());
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('glass-tab-1')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(find.byKey(const ValueKey('page-title-1')), findsOneWidget);
+  });
+
+  testWidgets('changes pages when the floating menu is dragged', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const LiquidGlassDemoApp());
+    await tester.pump();
+
+    final menu = tester.getRect(
+      find.byKey(const ValueKey('liquid-glass-tab-bar')),
+    );
+    await tester.dragFrom(
+      Offset(menu.left + 35, menu.center.dy),
+      Offset(menu.width - 80, 0),
+      touchSlopX: 2,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.byKey(const ValueKey('page-title-3')), findsOneWidget);
+  });
+
+  testWidgets('opens the elevated primary action', (tester) async {
+    await tester.pumpWidget(const LiquidGlassDemoApp());
+    await tester.pump();
+
+    await tester.tap(find.byKey(const ValueKey('liquid-primary-action')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Crear algo nuevo'), findsOneWidget);
+    expect(find.text('Nueva idea'), findsOneWidget);
   });
 }
