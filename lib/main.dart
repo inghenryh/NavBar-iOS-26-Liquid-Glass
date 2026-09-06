@@ -696,7 +696,7 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
 
   @override
   Widget build(BuildContext context) {
-    final fillOpacity = widget.highContrast ? 0.62 : 0.34;
+    final fillOpacity = widget.highContrast ? 0.62 : 0.29;
 
     return SizedBox(
       height: 96,

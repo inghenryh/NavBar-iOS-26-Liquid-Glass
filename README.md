@@ -2,7 +2,7 @@
 
 Una demostración Flutter de una barra de navegación flotante inspirada en el
 lenguaje visual Liquid Glass de iOS 26, adaptada para ejecutarse también en
-Android.
+Android y iOS 15 o posterior.
 
 ## Características
 
