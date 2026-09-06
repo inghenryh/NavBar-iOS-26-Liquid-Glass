@@ -9,7 +9,8 @@ Android.
 - Cápsula flotante con desenfoque real del contenido, tintes, borde luminoso y
   sombras multicapa.
 - Lente activa animada con brillo especular continuo.
-- Botón principal central elevado con respuesta elástica y acciones rápidas.
+- Botón principal central elevado con flujo líquido continuo, hundimiento bajo
+  el dedo, ondas expansivas y acciones rápidas.
 - Cambio de sección tocando o deslizando directamente sobre la barra.
 - Navegación lateral mediante `PageView`.
 - Compatibilidad con reducción de movimiento y alto contraste.

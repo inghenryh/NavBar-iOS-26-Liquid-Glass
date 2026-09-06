@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/widgets.dart';
 import 'package:navbar_ios_26_liquid_glass/main.dart';
 
 void main() {
@@ -14,6 +14,7 @@ void main() {
     expect(find.text('Código'), findsOneWidget);
     expect(find.text('Descubre'), findsOneWidget);
     expect(find.byKey(const ValueKey('liquid-primary-action')), findsOneWidget);
+    expect(find.byKey(const ValueKey('liquid-motion-layer')), findsOneWidget);
   });
 
   testWidgets('changes pages when a tab is selected', (tester) async {
@@ -57,5 +58,31 @@ void main() {
 
     expect(find.text('Crear algo nuevo'), findsOneWidget);
     expect(find.text('Nueva idea'), findsOneWidget);
+  });
+
+  testWidgets('liquid button depresses under an off-center touch', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const LiquidGlassDemoApp());
+    await tester.pump();
+
+    final button = find.byKey(const ValueKey('liquid-primary-action'));
+    final rect = tester.getRect(button);
+    final gesture = await tester.startGesture(
+      rect.topLeft + const Offset(18, 22),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 140));
+
+    final scale = tester.widget<ScaleTransition>(
+      find.descendant(of: button, matching: find.byType(ScaleTransition)),
+    );
+    expect(scale.scale.value, lessThan(1));
+
+    await gesture.cancel();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(scale.scale.value, closeTo(1, 0.001));
+    expect(tester.takeException(), isNull);
   });
 }

@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -134,7 +135,6 @@ class _LiquidGlassDemoPageState extends State<LiquidGlassDemoPage> {
   }
 
   void _showPrimaryAction() {
-    HapticFeedback.mediumImpact();
     showCupertinoModalPopup<void>(
       context: context,
       builder: (context) => CupertinoActionSheet(
@@ -599,7 +599,6 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
   double _touchX = 0.5;
   double? _pointerDownX;
   bool _touching = false;
-  bool _primaryPressed = false;
 
   double _slotForTab(int index) =>
       index < 2 ? index.toDouble() : (index + 1).toDouble();
@@ -889,11 +888,8 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                   height: primarySize,
                   child: _PrimaryGlassButton(
                     key: const ValueKey('liquid-primary-action'),
-                    pressed: _primaryPressed,
                     reduceMotion: widget.reduceMotion,
                     highContrast: widget.highContrast,
-                    onTapDown: () => setState(() => _primaryPressed = true),
-                    onTapEnd: () => setState(() => _primaryPressed = false),
                     onTap: widget.onPrimaryPressed,
                   ),
                 ),
@@ -1067,127 +1063,435 @@ class _ActiveLensShimmerPainter extends CustomPainter {
   bool shouldRepaint(covariant _ActiveLensShimmerPainter oldDelegate) => false;
 }
 
-class _PrimaryGlassButton extends StatelessWidget {
+class _PrimaryGlassButton extends StatefulWidget {
   const _PrimaryGlassButton({
     super.key,
-    required this.pressed,
     required this.reduceMotion,
     required this.highContrast,
-    required this.onTapDown,
-    required this.onTapEnd,
     required this.onTap,
   });
 
-  final bool pressed;
   final bool reduceMotion;
   final bool highContrast;
-  final VoidCallback onTapDown;
-  final VoidCallback onTapEnd;
   final VoidCallback onTap;
+
+  @override
+  State<_PrimaryGlassButton> createState() => _PrimaryGlassButtonState();
+}
+
+class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
+    with TickerProviderStateMixin {
+  late final AnimationController _waveController;
+  late final AnimationController _pressureController;
+  late final AnimationController _impactController;
+  late final Animation<double> _scaleAnimation;
+  final ValueNotifier<Offset> _touchOrigin = ValueNotifier(
+    const Offset(37, 27),
+  );
+  int? _activePointer;
+
+  @override
+  void initState() {
+    super.initState();
+    _waveController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 4800),
+      value: widget.reduceMotion ? 0.24 : 0,
+    );
+    _pressureController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 110),
+      reverseDuration: const Duration(milliseconds: 260),
+    );
+    _impactController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 720),
+    );
+    _scaleAnimation = Tween<double>(begin: 1, end: 0.91).animate(
+      CurvedAnimation(
+        parent: _pressureController,
+        curve: Curves.easeOutCubic,
+        reverseCurve: Curves.easeOutBack,
+      ),
+    );
+    if (!widget.reduceMotion) _waveController.repeat();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PrimaryGlassButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.reduceMotion == widget.reduceMotion) return;
+    if (widget.reduceMotion) {
+      _waveController
+        ..stop()
+        ..value = 0.24;
+      _impactController
+        ..stop()
+        ..value = 0;
+      _pressureController.value = _activePointer == null ? 0 : 1;
+    } else {
+      _waveController.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    _waveController.dispose();
+    _pressureController.dispose();
+    _impactController.dispose();
+    _touchOrigin.dispose();
+    super.dispose();
+  }
+
+  void _handlePointerDown(PointerDownEvent event) {
+    if (_activePointer != null) return;
+    _activePointer = event.pointer;
+    _touchOrigin.value = event.localPosition;
+    HapticFeedback.lightImpact();
+    if (widget.reduceMotion) {
+      _pressureController.value = 1;
+      _impactController.value = 0.34;
+    } else {
+      _pressureController.forward();
+      _impactController.forward(from: 0);
+    }
+  }
+
+  void _handlePointerMove(PointerMoveEvent event) {
+    if (_activePointer != event.pointer) return;
+    final next = event.localPosition;
+    if ((next - _touchOrigin.value).distanceSquared > 1) {
+      _touchOrigin.value = next;
+    }
+  }
+
+  void _handlePointerEnd(PointerEvent event) {
+    if (_activePointer != event.pointer) return;
+    _activePointer = null;
+    if (widget.reduceMotion) {
+      _pressureController.value = 0;
+      _impactController.value = 0;
+    } else {
+      _pressureController.reverse();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       label: 'Crear',
       button: true,
-      child: GestureDetector(
+      child: Listener(
         behavior: HitTestBehavior.opaque,
-        onTapDown: (_) => onTapDown(),
-        onTapCancel: onTapEnd,
-        onTapUp: (_) => onTapEnd(),
-        onTap: onTap,
-        child: AnimatedScale(
-          scale: pressed && !reduceMotion ? 0.91 : 1,
-          duration: pressed
-              ? const Duration(milliseconds: 90)
-              : const Duration(milliseconds: 220),
-          curve: pressed ? Curves.easeOut : Curves.easeOutBack,
-          child: RepaintBoundary(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Color(0x400A62B0),
-                    blurRadius: 24,
-                    offset: Offset(0, 13),
-                    spreadRadius: -5,
-                  ),
-                  BoxShadow(
-                    color: Color(0x66FFFFFF),
-                    blurRadius: 8,
-                    offset: Offset(-2, -3),
-                  ),
-                ],
-              ),
-              child: ClipOval(
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        onPointerDown: _handlePointerDown,
+        onPointerMove: _handlePointerMove,
+        onPointerUp: _handlePointerEnd,
+        onPointerCancel: _handlePointerEnd,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: ScaleTransition(
+            scale: _scaleAnimation,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                RepaintBoundary(
                   child: DecoratedBox(
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white.withValues(
-                            alpha: highContrast ? 0.94 : 0.78,
-                          ),
-                          const Color(0xFF55B9FF).withValues(alpha: 0.68),
-                          const Color(0xFF087BEB).withValues(alpha: 0.88),
-                        ],
-                        stops: const [0, 0.48, 1],
-                      ),
-                      border: Border.all(
-                        color: Colors.white.withValues(
-                          alpha: highContrast ? 1 : 0.88,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0x400A62B0),
+                          blurRadius: 24,
+                          offset: Offset(0, 13),
+                          spreadRadius: -5,
                         ),
-                        width: highContrast ? 1.6 : 1.2,
-                      ),
+                        BoxShadow(
+                          color: Color(0x66FFFFFF),
+                          blurRadius: 8,
+                          offset: Offset(-2, -3),
+                        ),
+                      ],
                     ),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        Positioned(
-                          left: 13,
-                          right: 17,
-                          top: 7,
-                          height: 23,
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(30),
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.white.withValues(alpha: 0.72),
-                                  Colors.white.withValues(alpha: 0),
-                                ],
+                    child: ClipOval(
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Colors.white.withValues(
+                                  alpha: widget.highContrast ? 0.94 : 0.78,
+                                ),
+                                const Color(0xFF55B9FF).withValues(alpha: 0.68),
+                                const Color(0xFF087BEB).withValues(alpha: 0.88),
+                              ],
+                              stops: const [0, 0.48, 1],
+                            ),
+                            border: Border.all(
+                              color: Colors.white.withValues(
+                                alpha: widget.highContrast ? 1 : 0.88,
                               ),
+                              width: widget.highContrast ? 1.6 : 1.2,
                             ),
                           ),
                         ),
-                        const Center(
-                          child: Icon(
-                            CupertinoIcons.plus,
-                            color: Colors.white,
-                            size: 30,
-                            shadows: [
-                              Shadow(color: Color(0x40004E92), blurRadius: 10),
-                            ],
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned.fill(
+                  child: ClipOval(
+                    child: IgnorePointer(
+                      child: RepaintBoundary(
+                        child: CustomPaint(
+                          key: const ValueKey('liquid-motion-layer'),
+                          painter: _PrimaryLiquidPainter(
+                            wave: _waveController,
+                            pressure: _pressureController,
+                            impact: _impactController,
+                            touchOrigin: _touchOrigin,
+                            highContrast: widget.highContrast,
                           ),
                         ),
+                      ),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  left: 13,
+                  right: 17,
+                  top: 7,
+                  height: 23,
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30),
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white.withValues(alpha: 0.72),
+                            Colors.white.withValues(alpha: 0),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const IgnorePointer(
+                  child: Center(
+                    child: Icon(
+                      CupertinoIcons.plus,
+                      color: Colors.white,
+                      size: 30,
+                      shadows: [
+                        Shadow(color: Color(0x40004E92), blurRadius: 10),
+                        Shadow(color: Color(0x66FFFFFF), blurRadius: 4),
                       ],
                     ),
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ),
       ),
     );
   }
+}
+
+class _PrimaryLiquidPainter extends CustomPainter {
+  _PrimaryLiquidPainter({
+    required this.wave,
+    required this.pressure,
+    required this.impact,
+    required this.touchOrigin,
+    required this.highContrast,
+  }) : super(repaint: Listenable.merge([wave, pressure, impact, touchOrigin]));
+
+  final Animation<double> wave;
+  final Animation<double> pressure;
+  final Animation<double> impact;
+  final ValueListenable<Offset> touchOrigin;
+  final bool highContrast;
+
+  Path _wavePath({
+    required Size size,
+    required double phase,
+    required double baseY,
+    required double amplitude,
+    required double frequency,
+    required double impactEnvelope,
+    required Offset touchPoint,
+  }) {
+    final path = Path()..moveTo(-2, size.height + 2);
+    for (double x = -2; x <= size.width + 2; x += 2) {
+      final normalizedX = x / size.width;
+      final distance = (x - touchPoint.dx) / (size.width * 0.22);
+      final indentation =
+          math.exp(-(distance * distance)) * impactEnvelope * 7.5;
+      final y =
+          baseY +
+          math.sin(normalizedX * math.pi * 2 * frequency + phase) * amplitude +
+          math.cos(normalizedX * math.pi * 3.2 - phase * 0.72) * 1.2 +
+          indentation;
+      path.lineTo(x, y);
+    }
+    return path
+      ..lineTo(size.width + 2, size.height + 2)
+      ..close();
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final phase = wave.value * math.pi * 2;
+    final pressureT = pressure.value.clamp(0.0, 1.0);
+    final impactT = impact.value.clamp(0.0, 1.0);
+    final impactContact = impactT < 0.32
+        ? Curves.easeOutCubic.transform(impactT / 0.32)
+        : 1 - Curves.easeInCubic.transform((impactT - 0.32) / 0.68);
+    final contact = math.min(1.0, pressureT * 0.82 + impactContact * 0.42);
+    final touchPoint = touchOrigin.value;
+    final safeTouch = Offset(
+      touchPoint.dx.clamp(5.0, size.width - 5),
+      touchPoint.dy.clamp(5.0, size.height - 5),
+    );
+
+    canvas.save();
+    canvas.clipPath(Path()..addOval(Offset.zero & size));
+
+    final backWave = _wavePath(
+      size: size,
+      phase: phase + 1.15,
+      baseY: size.height * 0.39,
+      amplitude: 3.1,
+      frequency: 1.05,
+      impactEnvelope: contact * 0.72,
+      touchPoint: touchPoint,
+    );
+    canvas.drawPath(
+      backWave,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white.withValues(alpha: highContrast ? 0.29 : 0.21),
+            const Color(0xFFBCEBFF).withValues(alpha: 0.11),
+          ],
+        ).createShader(Offset.zero & size),
+    );
+
+    final frontWave = _wavePath(
+      size: size,
+      phase: -phase * 0.84,
+      baseY: size.height * 0.52,
+      amplitude: 3.8,
+      frequency: 1.2,
+      impactEnvelope: contact,
+      touchPoint: touchPoint,
+    );
+    canvas.drawPath(
+      frontWave,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            const Color(0xFFB6EAFF).withValues(alpha: 0.12),
+            const Color(0xFF0078E7).withValues(alpha: 0.32),
+            const Color(0xFF004FAE).withValues(alpha: 0.40),
+          ],
+          stops: const [0, 0.58, 1],
+        ).createShader(Offset.zero & size),
+    );
+
+    final surfacePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = highContrast ? 1.35 : 1
+      ..color = Colors.white.withValues(alpha: highContrast ? 0.54 : 0.38);
+    final surface = Path();
+    for (double x = -2; x <= size.width + 2; x += 2) {
+      final normalizedX = x / size.width;
+      final distance = (x - touchPoint.dx) / (size.width * 0.22);
+      final indentation = math.exp(-(distance * distance)) * contact * 7.5;
+      final y =
+          size.height * 0.52 +
+          math.sin(normalizedX * math.pi * 2.4 - phase * 0.84) * 3.8 +
+          math.cos(normalizedX * math.pi * 3.2 + phase * 0.60) * 1.2 +
+          indentation;
+      if (x == -2) {
+        surface.moveTo(x, y);
+      } else {
+        surface.lineTo(x, y);
+      }
+    }
+    canvas.drawPath(surface, surfacePaint);
+
+    if (pressureT > 0 || (impactT > 0 && impactT < 1)) {
+      final rippleT = Curves.easeOutCubic.transform(impactT);
+      final fade = math.pow(1 - impactT, 1.35).toDouble();
+      final depressionRadius = 8 + contact * 13;
+      canvas.drawCircle(
+        safeTouch,
+        depressionRadius,
+        Paint()
+          ..shader =
+              RadialGradient(
+                colors: [
+                  const Color(0xFF003B82).withValues(alpha: 0.29 * contact),
+                  const Color(0xFF58C7FF).withValues(alpha: 0.10 * contact),
+                  Colors.transparent,
+                ],
+              ).createShader(
+                Rect.fromCircle(center: safeTouch, radius: depressionRadius),
+              ),
+      );
+
+      if (impactT > 0 && impactT < 1) {
+        canvas.drawCircle(
+          safeTouch,
+          4 + size.width * 0.61 * rippleT,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.8 - impactT * 0.7
+            ..color = Colors.white.withValues(alpha: 0.62 * fade),
+        );
+      }
+
+      final secondRippleT = ((impactT - 0.16) / 0.84).clamp(0.0, 1.0);
+      if (secondRippleT > 0) {
+        canvas.drawCircle(
+          safeTouch,
+          3 + size.width * 0.48 * Curves.easeOut.transform(secondRippleT),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 1.1
+            ..color = const Color(
+              0xFFD8F5FF,
+            ).withValues(alpha: 0.38 * (1 - secondRippleT)),
+        );
+      }
+
+      canvas.drawCircle(
+        safeTouch.translate(-2.4, -2.8),
+        2.3 + contact * 1.8,
+        Paint()..color = Colors.white.withValues(alpha: 0.52 * contact),
+      );
+    }
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _PrimaryLiquidPainter oldDelegate) =>
+      oldDelegate.touchOrigin != touchOrigin ||
+      oldDelegate.highContrast != highContrast;
 }
 
 class _GlassTabButton extends StatelessWidget {
