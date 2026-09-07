@@ -6,14 +6,15 @@ Android y iOS 15 o posterior.
 
 ## Características
 
-- Cápsula flotante con desenfoque real del contenido, tintes, borde luminoso y
-  sombras multicapa.
+- Cápsula flotante más translúcida con refracción real del contenido en
+  Impeller, desenfoque de respaldo, borde óptico y sombras multicapa.
 - Lente activa animada con brillo especular continuo.
-- Botón principal central elevado con flujo líquido continuo, hundimiento bajo
-  el dedo, ondas expansivas y acciones rápidas.
+- Botón principal central elevado con identidad Thunder, rayo sobre vehículo,
+  flujo líquido continuo, descarga, faros y respuesta bajo el dedo.
 - Cambio de sección tocando o deslizando directamente sobre la barra.
 - Navegación lateral mediante `PageView`.
 - Compatibilidad con reducción de movimiento y alto contraste.
+- Apariencia del menú adaptativa al modo claro u oscuro del sistema.
 - Animaciones aisladas con `RepaintBoundary` para no repintar continuamente el
   desenfoque completo.
 - Sin dependencias visuales de terceros en tiempo de ejecución.
@@ -22,17 +23,23 @@ Android y iOS 15 o posterior.
 
 Requiere Flutter compatible con Dart 3.10 o posterior.
 
-La variante verde `v1.1.0` es la predeterminada. Su acento parte del verde
+La variante verde `v1.2.0` es la predeterminada. Su acento parte del verde
 bosque del logo de referencia y se eleva ligeramente para conservar contraste
-sobre el cristal. La cápsula usa una opacidad base de `0.20`.
+sobre el cristal. La cápsula usa una opacidad base de `0.14` y el botón central
+representa la acción de pedir un vehículo.
 
 ```bash
 flutter pub get
 flutter run
 ```
 
-La variante azul original permanece disponible en el tag `v1.0.0` y también
-puede compilarse desde el código actual con su opacidad base de `0.29`:
+Las versiones anteriores siguen disponibles sin cambios:
+
+- `v1.1.0`: botón líquido verde con símbolo `+`.
+- `v1.0.0`: botón líquido azul con símbolo `+`.
+
+La paleta azul también puede compilarse desde el código actual con su opacidad
+base de `0.29`:
 
 ```bash
 flutter run --dart-define=LIQUID_GLASS_THEME=blue

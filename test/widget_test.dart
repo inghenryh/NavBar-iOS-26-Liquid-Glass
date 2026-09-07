@@ -1,9 +1,21 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/semantics.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:navbar_ios_26_liquid_glass/main.dart';
 
 void main() {
+  testWidgets('loads the Liquid Glass refraction shader', (tester) async {
+    final program = await ui.FragmentProgram.fromAsset(
+      'shaders/liquid_glass.frag',
+    );
+
+    expect(program, isNotNull);
+  });
+
   testWidgets('shows the floating Liquid Glass menu', (tester) async {
+    final semantics = tester.ensureSemantics();
     await tester.pumpWidget(const LiquidGlassDemoApp());
     await tester.pump();
 
@@ -15,9 +27,20 @@ void main() {
     expect(find.text('Descubre'), findsOneWidget);
     expect(find.byKey(const ValueKey('liquid-primary-action')), findsOneWidget);
     expect(find.byKey(const ValueKey('liquid-motion-layer')), findsOneWidget);
+    expect(find.byKey(const ValueKey('thunder-ride-mark')), findsOneWidget);
+    expect(find.bySemanticsLabel('Pedir vehículo'), findsOneWidget);
+    final rideButtonSemantics = tester.semantics.find(
+      find.bySemanticsLabel('Pedir vehículo'),
+    );
+    expect(
+      rideButtonSemantics.getSemanticsData().hasAction(SemanticsAction.tap),
+      isTrue,
+    );
+    expect(find.byIcon(CupertinoIcons.plus), findsNothing);
+    semantics.dispose();
   });
 
-  testWidgets('uses the green palette and 0.20 glass by default', (
+  testWidgets('uses the green palette and 0.14 glass by default', (
     tester,
   ) async {
     await tester.pumpWidget(const LiquidGlassDemoApp());
@@ -35,7 +58,45 @@ void main() {
     final gradient = (surface.decoration as BoxDecoration).gradient!;
 
     expect(activeIcon.color, const Color(0xFF087D2A));
-    expect(gradient.colors[1].a, closeTo(0.20, 0.001));
+    expect(gradient.colors[1].a, closeTo(0.14, 0.001));
+    expect(
+      find.byKey(const ValueKey('liquid-glass-refraction-rim')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('liquid-glass-blur-fallback')),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('adapts glass contrast to dark appearance', (tester) async {
+    addTearDown(tester.platformDispatcher.clearAllTestValues);
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+
+    await tester.pumpWidget(const LiquidGlassDemoApp());
+    await tester.pump();
+
+    final activeIcon = tester.widget<Icon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('glass-tab-0')),
+        matching: find.byIcon(CupertinoIcons.house_fill),
+      ),
+    );
+    final inactiveIcon = tester.widget<Icon>(
+      find.descendant(
+        of: find.byKey(const ValueKey('glass-tab-1')),
+        matching: find.byIcon(CupertinoIcons.play_rectangle_fill),
+      ),
+    );
+    final surface = tester.widget<DecoratedBox>(
+      find.byKey(const ValueKey('liquid-glass-surface')),
+    );
+    final gradient = (surface.decoration as BoxDecoration).gradient!;
+
+    expect(activeIcon.color, const Color(0xFF59CF7B));
+    expect(inactiveIcon.color, const Color(0xDBE6EBF2));
+    expect(gradient.colors[1].computeLuminance(), lessThan(0.02));
+    expect(gradient.colors[1].a, closeTo(0.14, 0.001));
   });
 
   testWidgets('keeps the original blue palette available', (tester) async {
@@ -90,7 +151,7 @@ void main() {
     expect(find.byKey(const ValueKey('page-title-3')), findsOneWidget);
   });
 
-  testWidgets('opens the elevated primary action', (tester) async {
+  testWidgets('opens the ride request action', (tester) async {
     await tester.pumpWidget(const LiquidGlassDemoApp());
     await tester.pump();
 
@@ -98,8 +159,9 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(find.text('Crear algo nuevo'), findsOneWidget);
-    expect(find.text('Nueva idea'), findsOneWidget);
+    expect(find.text('Pedir vehículo'), findsOneWidget);
+    expect(find.text('Pedir ahora'), findsOneWidget);
+    expect(find.text('Programar viaje'), findsOneWidget);
   });
 
   testWidgets('liquid button depresses under an off-center touch', (
@@ -117,7 +179,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 140));
 
     final scale = tester.widget<ScaleTransition>(
-      find.descendant(of: button, matching: find.byType(ScaleTransition)),
+      find.byKey(const ValueKey('primary-button-scale')),
     );
     expect(scale.scale.value, lessThan(1));
 

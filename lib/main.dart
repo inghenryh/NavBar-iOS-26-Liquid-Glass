@@ -68,7 +68,7 @@ class _LiquidNavPalette {
   );
 
   static const green = _LiquidNavPalette(
-    surfaceOpacity: 0.20,
+    surfaceOpacity: 0.14,
     lensMid: Color(0xFFEAF9F0),
     lensEnd: Color(0xFFC7E9D0),
     lensShadow: Color(0xFF2F9B55),
@@ -108,7 +108,7 @@ class _LiquidNavPalette {
   final Color touchGlow;
 }
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
@@ -122,16 +122,30 @@ void main() {
       systemNavigationBarContrastEnforced: false,
     ),
   );
-  runApp(const LiquidGlassDemoApp(variant: _configuredVariant));
+  FragmentProgram? glassProgram;
+  if (ImageFilter.isShaderFilterSupported) {
+    try {
+      glassProgram = await FragmentProgram.fromAsset(
+        'shaders/liquid_glass.frag',
+      );
+    } on Object catch (error) {
+      debugPrint('Liquid Glass refraction fallback: $error');
+    }
+  }
+  runApp(
+    LiquidGlassDemoApp(variant: _configuredVariant, glassProgram: glassProgram),
+  );
 }
 
 class LiquidGlassDemoApp extends StatelessWidget {
   const LiquidGlassDemoApp({
     super.key,
     this.variant = LiquidGlassVariant.green,
+    this.glassProgram,
   });
 
   final LiquidGlassVariant variant;
+  final FragmentProgram? glassProgram;
 
   @override
   Widget build(BuildContext context) {
@@ -148,7 +162,7 @@ class LiquidGlassDemoApp extends StatelessWidget {
           ),
         ),
       ),
-      home: LiquidGlassDemoPage(variant: variant),
+      home: LiquidGlassDemoPage(variant: variant, glassProgram: glassProgram),
     );
   }
 }
@@ -157,9 +171,11 @@ class LiquidGlassDemoPage extends StatefulWidget {
   const LiquidGlassDemoPage({
     super.key,
     this.variant = LiquidGlassVariant.green,
+    this.glassProgram,
   });
 
   final LiquidGlassVariant variant;
+  final FragmentProgram? glassProgram;
 
   @override
   State<LiquidGlassDemoPage> createState() => _LiquidGlassDemoPageState();
@@ -250,20 +266,16 @@ class _LiquidGlassDemoPageState extends State<LiquidGlassDemoPage> {
     showCupertinoModalPopup<void>(
       context: context,
       builder: (context) => CupertinoActionSheet(
-        title: const Text('Crear algo nuevo'),
-        message: const Text('Elige una acción rápida para continuar.'),
+        title: const Text('Pedir vehículo'),
+        message: const Text('Elige cómo quieres iniciar tu próximo viaje.'),
         actions: [
           CupertinoActionSheetAction(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Nueva idea'),
+            child: const Text('Pedir ahora'),
           ),
           CupertinoActionSheetAction(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Nuevo mensaje'),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Nuevo proyecto'),
+            child: const Text('Programar viaje'),
           ),
         ],
         cancelButton: CupertinoActionSheetAction(
@@ -278,6 +290,7 @@ class _LiquidGlassDemoPageState extends State<LiquidGlassDemoPage> {
   Widget build(BuildContext context) {
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
     final bottomInset = MediaQuery.paddingOf(context).bottom;
+    final glassBrightness = MediaQuery.platformBrightnessOf(context);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -316,6 +329,8 @@ class _LiquidGlassDemoPageState extends State<LiquidGlassDemoPage> {
                   key: const ValueKey('liquid-glass-tab-bar'),
                   tabs: _tabs,
                   palette: widget.variant.palette,
+                  glassProgram: widget.glassProgram,
+                  brightness: glassBrightness,
                   currentIndex: _selectedIndex,
                   reduceMotion: reduceMotion,
                   highContrast: MediaQuery.highContrastOf(context),
@@ -685,6 +700,8 @@ class _LiquidGlassTabBar extends StatefulWidget {
     super.key,
     required this.tabs,
     required this.palette,
+    required this.glassProgram,
+    required this.brightness,
     required this.currentIndex,
     required this.onChanged,
     required this.onPrimaryPressed,
@@ -694,6 +711,8 @@ class _LiquidGlassTabBar extends StatefulWidget {
 
   final List<_TabSpec> tabs;
   final _LiquidNavPalette palette;
+  final FragmentProgram? glassProgram;
+  final Brightness brightness;
   final int currentIndex;
   final ValueChanged<int> onChanged;
   final VoidCallback onPrimaryPressed;
@@ -811,8 +830,9 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = widget.brightness == Brightness.dark;
     final fillOpacity = widget.highContrast
-        ? 0.62
+        ? (isDark ? 0.52 : 0.58)
         : widget.palette.surfaceOpacity;
 
     return SizedBox(
@@ -848,21 +868,27 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(39),
-                        boxShadow: const [
+                        boxShadow: [
                           BoxShadow(
-                            color: Color(0x30091B2E),
-                            blurRadius: 38,
+                            color: isDark
+                                ? const Color(0x73000000)
+                                : const Color(0x30091B2E),
+                            blurRadius: isDark ? 42 : 38,
                             offset: Offset(0, 20),
                             spreadRadius: -8,
                           ),
                           BoxShadow(
-                            color: Color(0x1A357AB7),
+                            color: isDark
+                                ? const Color(0x3D000000)
+                                : const Color(0x1A357AB7),
                             blurRadius: 16,
                             offset: Offset(0, 7),
                             spreadRadius: -3,
                           ),
                           BoxShadow(
-                            color: Color(0x5CFFFFFF),
+                            color: isDark
+                                ? const Color(0x30FFFFFF)
+                                : const Color(0x5CFFFFFF),
                             blurRadius: 9,
                             offset: Offset(-2, -3),
                             spreadRadius: -3,
@@ -871,8 +897,8 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(39),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                        child: _RefractiveGlassBackdrop(
+                          program: widget.glassProgram,
                           child: Stack(
                             fit: StackFit.expand,
                             children: [
@@ -883,22 +909,41 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                                   gradient: LinearGradient(
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
-                                    colors: [
-                                      Colors.white.withValues(
-                                        alpha: fillOpacity + 0.16,
-                                      ),
-                                      Colors.white.withValues(
-                                        alpha: fillOpacity,
-                                      ),
-                                      const Color(
-                                        0xFFDAE8F2,
-                                      ).withValues(alpha: fillOpacity - 0.12),
-                                    ],
+                                    colors: isDark
+                                        ? [
+                                            const Color(0xFF27313B).withValues(
+                                              alpha: fillOpacity + 0.06,
+                                            ),
+                                            const Color(
+                                              0xFF111820,
+                                            ).withValues(alpha: fillOpacity),
+                                            const Color(0xFF02060B).withValues(
+                                              alpha: fillOpacity + 0.04,
+                                            ),
+                                          ]
+                                        : [
+                                            Colors.white.withValues(
+                                              alpha: fillOpacity + 0.10,
+                                            ),
+                                            Colors.white.withValues(
+                                              alpha: fillOpacity,
+                                            ),
+                                            const Color(0xFFDAE8F2).withValues(
+                                              alpha: math.max(
+                                                0.04,
+                                                fillOpacity - 0.09,
+                                              ),
+                                            ),
+                                          ],
                                     stops: const [0, 0.48, 1],
                                   ),
                                   border: Border.all(
                                     color: Colors.white.withValues(
-                                      alpha: widget.highContrast ? 0.95 : 0.72,
+                                      alpha: widget.highContrast
+                                          ? 0.95
+                                          : isDark
+                                          ? 0.42
+                                          : 0.62,
                                     ),
                                     width: widget.highContrast ? 1.4 : 1,
                                   ),
@@ -918,9 +963,24 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                                       begin: Alignment.topCenter,
                                       end: Alignment.bottomCenter,
                                       colors: [
-                                        Colors.white.withValues(alpha: 0.56),
+                                        Colors.white.withValues(
+                                          alpha: isDark ? 0.20 : 0.32,
+                                        ),
                                         Colors.white.withValues(alpha: 0),
                                       ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              Positioned.fill(
+                                child: IgnorePointer(
+                                  child: CustomPaint(
+                                    key: const ValueKey(
+                                      'liquid-glass-refraction-rim',
+                                    ),
+                                    painter: _GlassRefractionRimPainter(
+                                      brightness: widget.brightness,
+                                      highContrast: widget.highContrast,
                                     ),
                                   ),
                                 ),
@@ -936,6 +996,7 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                   animation: _selectionController,
                   child: _SelectionLens(
                     palette: widget.palette,
+                    brightness: widget.brightness,
                     highContrast: widget.highContrast,
                     reduceMotion: widget.reduceMotion,
                   ),
@@ -991,6 +1052,7 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                           key: ValueKey('glass-tab-$index'),
                           tab: tab,
                           palette: widget.palette,
+                          brightness: widget.brightness,
                           selected: index == widget.currentIndex,
                           pressed: index == _pressedIndex,
                           reduceMotion: widget.reduceMotion,
@@ -1010,6 +1072,7 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
                   child: _PrimaryGlassButton(
                     key: const ValueKey('liquid-primary-action'),
                     palette: widget.palette,
+                    brightness: widget.brightness,
                     reduceMotion: widget.reduceMotion,
                     highContrast: widget.highContrast,
                     onTap: widget.onPrimaryPressed,
@@ -1024,19 +1087,184 @@ class _LiquidGlassTabBarState extends State<_LiquidGlassTabBar>
   }
 }
 
+class _RefractiveGlassBackdrop extends StatefulWidget {
+  const _RefractiveGlassBackdrop({required this.program, required this.child});
+
+  final FragmentProgram? program;
+  final Widget child;
+
+  @override
+  State<_RefractiveGlassBackdrop> createState() =>
+      _RefractiveGlassBackdropState();
+}
+
+class _RefractiveGlassBackdropState extends State<_RefractiveGlassBackdrop> {
+  FragmentShader? _shader;
+  late ImageFilter _filter;
+
+  @override
+  void initState() {
+    super.initState();
+    _configureFilter();
+  }
+
+  @override
+  void didUpdateWidget(covariant _RefractiveGlassBackdrop oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.program != widget.program) _configureFilter();
+  }
+
+  void _configureFilter() {
+    _shader?.dispose();
+    _shader = null;
+    final program = widget.program;
+    if (program != null && ImageFilter.isShaderFilterSupported) {
+      try {
+        final shader = program.fragmentShader();
+        _shader = shader;
+        _filter = ImageFilter.shader(shader);
+        return;
+      } on Object catch (error) {
+        _shader?.dispose();
+        _shader = null;
+        debugPrint('Liquid Glass filter fallback: $error');
+      }
+    }
+    _filter = ImageFilter.blur(
+      sigmaX: 16,
+      sigmaY: 16,
+      tileMode: TileMode.mirror,
+    );
+  }
+
+  @override
+  void dispose() {
+    _shader?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BackdropFilter(
+      key: ValueKey(
+        _shader == null
+            ? 'liquid-glass-blur-fallback'
+            : 'liquid-glass-refraction-filter',
+      ),
+      filter: _filter,
+      child: widget.child,
+    );
+  }
+}
+
+class _GlassRefractionRimPainter extends CustomPainter {
+  const _GlassRefractionRimPainter({
+    required this.brightness,
+    required this.highContrast,
+  });
+
+  final Brightness brightness;
+  final bool highContrast;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final isDark = brightness == Brightness.dark;
+    final bounds = Offset.zero & size;
+    final outerRect = bounds.deflate(0.7);
+    final outerRadius = Radius.circular(math.max(0, outerRect.height / 2));
+    final outer = RRect.fromRectAndRadius(outerRect, outerRadius);
+    final outerPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = highContrast ? 1.65 : 1.25
+      ..shader = LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Colors.white.withValues(
+            alpha: highContrast
+                ? 0.96
+                : isDark
+                ? 0.68
+                : 0.88,
+          ),
+          Colors.white.withValues(alpha: isDark ? 0.30 : 0.48),
+          const Color(0xFF31506B).withValues(alpha: isDark ? 0.32 : 0.20),
+        ],
+        stops: const [0, 0.48, 1],
+      ).createShader(bounds);
+    canvas.drawRRect(outer, outerPaint);
+
+    final innerRect = bounds.deflate(3.6);
+    final inner = RRect.fromRectAndRadius(
+      innerRect,
+      Radius.circular(math.max(0, innerRect.height / 2)),
+    );
+    canvas.drawRRect(
+      inner,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = highContrast ? 1.25 : 0.9
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.white.withValues(alpha: isDark ? 0.20 : 0.28),
+            Colors.transparent,
+            const Color(0xFF19364C).withValues(alpha: isDark ? 0.24 : 0.13),
+          ],
+          stops: const [0, 0.58, 1],
+        ).createShader(bounds),
+    );
+
+    final causticPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = highContrast ? 1.6 : 1.15
+      ..strokeCap = StrokeCap.round
+      ..color = Colors.white.withValues(alpha: isDark ? 0.27 : 0.38);
+    final radius = size.height / 2;
+    canvas
+      ..drawArc(
+        Rect.fromCircle(center: Offset(radius, radius), radius: radius - 2.1),
+        math.pi * 0.70,
+        math.pi * 0.42,
+        false,
+        causticPaint,
+      )
+      ..drawArc(
+        Rect.fromCircle(
+          center: Offset(size.width - radius, radius),
+          radius: radius - 2.1,
+        ),
+        math.pi * 1.70,
+        math.pi * 0.24,
+        false,
+        causticPaint..color = causticPaint.color.withValues(alpha: 0.20),
+      );
+  }
+
+  @override
+  bool shouldRepaint(covariant _GlassRefractionRimPainter oldDelegate) =>
+      oldDelegate.brightness != brightness ||
+      oldDelegate.highContrast != highContrast;
+}
+
 class _SelectionLens extends StatelessWidget {
   const _SelectionLens({
     required this.palette,
+    required this.brightness,
     required this.highContrast,
     required this.reduceMotion,
   });
 
   final _LiquidNavPalette palette;
+  final Brightness brightness;
   final bool highContrast;
   final bool reduceMotion;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = brightness == Brightness.dark;
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(33),
@@ -1044,14 +1272,26 @@ class _SelectionLens extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.white.withValues(alpha: highContrast ? 0.86 : 0.68),
-            palette.lensMid.withValues(alpha: 0.46),
-            palette.lensEnd.withValues(alpha: 0.25),
+            Colors.white.withValues(
+              alpha: highContrast
+                  ? 0.82
+                  : isDark
+                  ? 0.17
+                  : 0.48,
+            ),
+            palette.lensMid.withValues(alpha: isDark ? 0.14 : 0.30),
+            palette.lensEnd.withValues(alpha: isDark ? 0.08 : 0.17),
           ],
           stops: const [0, 0.56, 1],
         ),
         border: Border.all(
-          color: Colors.white.withValues(alpha: highContrast ? 1 : 0.80),
+          color: Colors.white.withValues(
+            alpha: highContrast
+                ? 1
+                : isDark
+                ? 0.46
+                : 0.68,
+          ),
           width: 1,
         ),
         boxShadow: [
@@ -1079,13 +1319,16 @@ class _SelectionLens extends StatelessWidget {
                   center: const Alignment(-0.35, -0.9),
                   radius: 1.25,
                   colors: [
-                    Colors.white.withValues(alpha: 0.42),
+                    Colors.white.withValues(alpha: isDark ? 0.14 : 0.26),
                     Colors.white.withValues(alpha: 0),
                   ],
                 ),
               ),
             ),
-            _ActiveLensShimmer(reduceMotion: reduceMotion),
+            _ActiveLensShimmer(
+              reduceMotion: reduceMotion,
+              brightness: brightness,
+            ),
           ],
         ),
       ),
@@ -1094,9 +1337,13 @@ class _SelectionLens extends StatelessWidget {
 }
 
 class _ActiveLensShimmer extends StatefulWidget {
-  const _ActiveLensShimmer({required this.reduceMotion});
+  const _ActiveLensShimmer({
+    required this.reduceMotion,
+    required this.brightness,
+  });
 
   final bool reduceMotion;
+  final Brightness brightness;
 
   @override
   State<_ActiveLensShimmer> createState() => _ActiveLensShimmerState();
@@ -1141,7 +1388,10 @@ class _ActiveLensShimmerState extends State<_ActiveLensShimmer>
     return IgnorePointer(
       child: RepaintBoundary(
         child: CustomPaint(
-          painter: _ActiveLensShimmerPainter(progress: _controller),
+          painter: _ActiveLensShimmerPainter(
+            progress: _controller,
+            brightness: widget.brightness,
+          ),
         ),
       ),
     );
@@ -1149,10 +1399,11 @@ class _ActiveLensShimmerState extends State<_ActiveLensShimmer>
 }
 
 class _ActiveLensShimmerPainter extends CustomPainter {
-  _ActiveLensShimmerPainter({required this.progress})
+  _ActiveLensShimmerPainter({required this.progress, required this.brightness})
     : super(repaint: progress);
 
   final Animation<double> progress;
+  final Brightness brightness;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -1169,7 +1420,9 @@ class _ActiveLensShimmerPainter extends CustomPainter {
         colors: [
           Colors.white.withValues(alpha: 0),
           Colors.white.withValues(alpha: 0.06),
-          Colors.white.withValues(alpha: 0.48),
+          Colors.white.withValues(
+            alpha: brightness == Brightness.dark ? 0.30 : 0.42,
+          ),
           Colors.white.withValues(alpha: 0.08),
           Colors.white.withValues(alpha: 0),
         ],
@@ -1184,19 +1437,22 @@ class _ActiveLensShimmerPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _ActiveLensShimmerPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _ActiveLensShimmerPainter oldDelegate) =>
+      oldDelegate.brightness != brightness;
 }
 
 class _PrimaryGlassButton extends StatefulWidget {
   const _PrimaryGlassButton({
     super.key,
     required this.palette,
+    required this.brightness,
     required this.reduceMotion,
     required this.highContrast,
     required this.onTap,
   });
 
   final _LiquidNavPalette palette;
+  final Brightness brightness;
   final bool reduceMotion;
   final bool highContrast;
   final VoidCallback onTap;
@@ -1231,7 +1487,7 @@ class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
     );
     _impactController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 720),
+      duration: const Duration(milliseconds: 640),
     );
     _scaleAnimation = Tween<double>(begin: 1, end: 0.91).animate(
       CurvedAnimation(
@@ -1273,7 +1529,7 @@ class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
     if (_activePointer != null) return;
     _activePointer = event.pointer;
     _touchOrigin.value = event.localPosition;
-    HapticFeedback.lightImpact();
+    HapticFeedback.mediumImpact();
     if (widget.reduceMotion) {
       _pressureController.value = 1;
       _impactController.value = 0.34;
@@ -1305,8 +1561,10 @@ class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'Crear',
+      excludeSemantics: true,
+      label: 'Pedir vehículo',
       button: true,
+      onTap: widget.onTap,
       child: Listener(
         behavior: HitTestBehavior.opaque,
         onPointerDown: _handlePointerDown,
@@ -1317,6 +1575,7 @@ class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
           behavior: HitTestBehavior.opaque,
           onTap: widget.onTap,
           child: ScaleTransition(
+            key: const ValueKey('primary-button-scale'),
             scale: _scaleAnimation,
             child: Stack(
               fit: StackFit.expand,
@@ -1332,8 +1591,10 @@ class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
                           offset: Offset(0, 13),
                           spreadRadius: -5,
                         ),
-                        const BoxShadow(
-                          color: Color(0x66FFFFFF),
+                        BoxShadow(
+                          color: widget.brightness == Brightness.dark
+                              ? const Color(0x3DFFFFFF)
+                              : const Color(0x66FFFFFF),
                           blurRadius: 8,
                           offset: Offset(-2, -3),
                         ),
@@ -1386,6 +1647,7 @@ class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
                             touchOrigin: _touchOrigin,
                             highContrast: widget.highContrast,
                             palette: widget.palette,
+                            reduceMotion: widget.reduceMotion,
                           ),
                         ),
                       ),
@@ -1413,19 +1675,19 @@ class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
                     ),
                   ),
                 ),
-                IgnorePointer(
-                  child: Center(
-                    child: Icon(
-                      CupertinoIcons.plus,
-                      color: Colors.white,
-                      size: 30,
-                      shadows: [
-                        Shadow(
-                          color: widget.palette.plusShadow,
-                          blurRadius: 10,
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: RepaintBoundary(
+                      child: CustomPaint(
+                        key: const ValueKey('thunder-ride-mark'),
+                        painter: _ThunderRideMarkPainter(
+                          impact: _impactController,
+                          pressure: _pressureController,
+                          palette: widget.palette,
+                          highContrast: widget.highContrast,
+                          reduceMotion: widget.reduceMotion,
                         ),
-                        const Shadow(color: Color(0x66FFFFFF), blurRadius: 4),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -1438,6 +1700,254 @@ class _PrimaryGlassButtonState extends State<_PrimaryGlassButton>
   }
 }
 
+class _ThunderRideMarkPainter extends CustomPainter {
+  _ThunderRideMarkPainter({
+    required this.impact,
+    required this.pressure,
+    required this.palette,
+    required this.highContrast,
+    required this.reduceMotion,
+  }) : super(repaint: Listenable.merge([impact, pressure]));
+
+  final Animation<double> impact;
+  final Animation<double> pressure;
+  final _LiquidNavPalette palette;
+  final bool highContrast;
+  final bool reduceMotion;
+
+  double _interval(double value, double begin, double end, Curve curve) {
+    final normalized = ((value - begin) / (end - begin)).clamp(0.0, 1.0);
+    return curve.transform(normalized);
+  }
+
+  double _between(double start, double end, double progress) =>
+      start + (end - start) * progress;
+
+  Path _boltPath() => Path()
+    ..moveTo(38.5, 13)
+    ..cubicTo(39.7, 13, 40.3, 14.1, 39.9, 15.1)
+    ..lineTo(37.6, 21.6)
+    ..lineTo(42.1, 21.6)
+    ..cubicTo(43.5, 21.6, 44.2, 23.1, 43.3, 24.1)
+    ..lineTo(35.5, 32.9)
+    ..cubicTo(34.5, 34.1, 32.6, 33.2, 33, 31.6)
+    ..lineTo(34.9, 25.5)
+    ..lineTo(31.7, 25.5)
+    ..cubicTo(30.4, 25.5, 29.7, 24.1, 30.5, 23)
+    ..lineTo(37, 13.7)
+    ..cubicTo(37.4, 13.2, 37.9, 13, 38.5, 13)
+    ..close();
+
+  Path _carBodyPath() {
+    final body = Path()..fillType = PathFillType.evenOdd;
+    body
+      ..moveTo(25.2, 41)
+      ..lineTo(27.8, 35.3)
+      ..quadraticBezierTo(28.8, 33.1, 31.4, 33.1)
+      ..lineTo(42.6, 33.1)
+      ..quadraticBezierTo(45.2, 33.1, 46.2, 35.3)
+      ..lineTo(48.8, 41)
+      ..quadraticBezierTo(53.8, 42.3, 54.8, 46.4)
+      ..lineTo(54.8, 54.8)
+      ..quadraticBezierTo(54.8, 57.2, 52.4, 57.2)
+      ..lineTo(21.6, 57.2)
+      ..quadraticBezierTo(19.2, 57.2, 19.2, 54.8)
+      ..lineTo(19.2, 46.4)
+      ..quadraticBezierTo(20.2, 42.3, 25.2, 41)
+      ..close()
+      ..moveTo(29.7, 35.1)
+      ..quadraticBezierTo(30.1, 34.1, 31.4, 34.1)
+      ..lineTo(42.6, 34.1)
+      ..quadraticBezierTo(43.9, 34.1, 44.3, 35.1)
+      ..lineTo(46.5, 40.3)
+      ..lineTo(27.5, 40.3)
+      ..close()
+      ..addOval(Rect.fromCircle(center: const Offset(25.7, 48.4), radius: 3.15))
+      ..addOval(Rect.fromCircle(center: const Offset(48.3, 48.4), radius: 3.15))
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          const Rect.fromLTWH(30.8, 53, 12.4, 2.3),
+          const Radius.circular(1.15),
+        ),
+      );
+    return body;
+  }
+
+  void _drawMarkPath(
+    Canvas canvas,
+    Path path,
+    Paint foreground, {
+    double shadowOffset = 1.2,
+  }) {
+    canvas
+      ..save()
+      ..translate(0, shadowOffset)
+      ..drawPath(
+        path,
+        Paint()
+          ..style = PaintingStyle.fill
+          ..color = palette.plusShadow.withValues(
+            alpha: highContrast ? 0.44 : 0.30,
+          ),
+      )
+      ..restore()
+      ..drawPath(path, foreground);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final scale = math.min(size.width, size.height) / 74;
+    final origin = Offset(
+      (size.width - 74 * scale) / 2,
+      (size.height - 74 * scale) / 2,
+    );
+    final rawImpact = impact.value.clamp(0.0, 1.0);
+    final press = pressure.value.clamp(0.0, 1.0);
+    final isImpactActive = rawImpact > 0 && rawImpact < 1;
+
+    var boltDy = 0.0;
+    var carDy = 0.0;
+    var carScaleY = 1.0;
+    if (!reduceMotion && isImpactActive) {
+      if (rawImpact < 0.10) {
+        boltDy = _between(
+          0,
+          -1.4,
+          _interval(rawImpact, 0, 0.10, Curves.easeOutCubic),
+        );
+      } else if (rawImpact < 0.25) {
+        boltDy = _between(
+          -1.4,
+          3.2,
+          _interval(rawImpact, 0.10, 0.25, Curves.easeInCubic),
+        );
+      } else if (rawImpact < 0.55) {
+        boltDy = _between(
+          3.2,
+          0,
+          _interval(rawImpact, 0.25, 0.55, Curves.easeOutBack),
+        );
+      }
+
+      if (rawImpact >= 0.20 && rawImpact < 0.38) {
+        final carT = _interval(rawImpact, 0.20, 0.38, Curves.easeOutCubic);
+        carDy = _between(0, 1.4, carT);
+        carScaleY = _between(1, 0.97, carT);
+      } else if (rawImpact < 0.62 && rawImpact >= 0.38) {
+        final carT = _interval(rawImpact, 0.38, 0.62, Curves.easeOutBack);
+        carDy = _between(1.4, -1.2, carT);
+        carScaleY = _between(0.97, 1.015, carT);
+      } else if (rawImpact < 0.86 && rawImpact >= 0.62) {
+        final carT = _interval(rawImpact, 0.62, 0.86, Curves.easeOutCubic);
+        carDy = _between(-1.2, 0, carT);
+        carScaleY = _between(1.015, 1, carT);
+      }
+    }
+
+    final flash = reduceMotion
+        ? press * 0.48
+        : isImpactActive
+        ? math.exp(-math.pow((rawImpact - 0.25) / 0.13, 2)).toDouble()
+        : 0.0;
+    final boltCharge = reduceMotion
+        ? 0.0
+        : isImpactActive
+        ? math.sin(
+                _interval(rawImpact, 0, 0.25, Curves.easeOutCubic) * math.pi,
+              ) *
+              0.08
+        : 0.0;
+    final symbolPaint = Paint()
+      ..style = PaintingStyle.fill
+      ..color = Colors.white.withValues(alpha: highContrast ? 1 : 0.96);
+
+    canvas
+      ..save()
+      ..translate(origin.dx, origin.dy)
+      ..scale(scale);
+
+    if (flash > 0.01) {
+      final contact = Offset(37, 34.2 + carDy);
+      canvas.drawCircle(
+        contact,
+        7 + flash * 8,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              Colors.white.withValues(alpha: 0.36 * flash),
+              palette.contactLight.withValues(alpha: 0.18 * flash),
+              Colors.transparent,
+            ],
+          ).createShader(Rect.fromCircle(center: contact, radius: 15)),
+      );
+      final branchPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.1
+        ..strokeCap = StrokeCap.round
+        ..color = Colors.white.withValues(alpha: 0.76 * flash);
+      canvas
+        ..drawLine(contact, Offset(31.2, 38.1 + carDy), branchPaint)
+        ..drawLine(contact, Offset(43.2, 37.8 + carDy), branchPaint);
+    }
+
+    canvas.save();
+    canvas.translate(0, 1.4 + carDy);
+    canvas.translate(37, 47);
+    canvas.scale(1, carScaleY);
+    canvas.translate(-37, -47);
+    final leftWheel = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          const Rect.fromLTWH(22.2, 55.2, 6.7, 6.6),
+          const Radius.circular(2.2),
+        ),
+      );
+    final rightWheel = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          const Rect.fromLTWH(45.1, 55.2, 6.7, 6.6),
+          const Radius.circular(2.2),
+        ),
+      );
+    _drawMarkPath(canvas, leftWheel, symbolPaint);
+    _drawMarkPath(canvas, rightWheel, symbolPaint);
+    _drawMarkPath(canvas, _carBodyPath(), symbolPaint);
+
+    if (flash > 0.02) {
+      final headlightPaint = Paint()
+        ..color = palette.liquidBack.withValues(alpha: 0.86 * flash);
+      canvas
+        ..drawCircle(
+          const Offset(25.7, 48.4),
+          2.45 + flash * 0.7,
+          headlightPaint,
+        )
+        ..drawCircle(
+          const Offset(48.3, 48.4),
+          2.45 + flash * 0.7,
+          headlightPaint,
+        );
+    }
+    canvas.restore();
+
+    canvas.save();
+    canvas.translate(37, 23);
+    canvas.scale(1 + boltCharge, 1 + boltCharge);
+    canvas.translate(-37, -23 + boltDy);
+    _drawMarkPath(canvas, _boltPath(), symbolPaint, shadowOffset: 1);
+    canvas.restore();
+
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _ThunderRideMarkPainter oldDelegate) =>
+      oldDelegate.palette != palette ||
+      oldDelegate.highContrast != highContrast ||
+      oldDelegate.reduceMotion != reduceMotion;
+}
+
 class _PrimaryLiquidPainter extends CustomPainter {
   _PrimaryLiquidPainter({
     required this.wave,
@@ -1446,6 +1956,7 @@ class _PrimaryLiquidPainter extends CustomPainter {
     required this.touchOrigin,
     required this.highContrast,
     required this.palette,
+    required this.reduceMotion,
   }) : super(repaint: Listenable.merge([wave, pressure, impact, touchOrigin]));
 
   final Animation<double> wave;
@@ -1454,6 +1965,7 @@ class _PrimaryLiquidPainter extends CustomPainter {
   final ValueListenable<Offset> touchOrigin;
   final bool highContrast;
   final _LiquidNavPalette palette;
+  final bool reduceMotion;
 
   Path _wavePath({
     required Size size,
@@ -1569,6 +2081,45 @@ class _PrimaryLiquidPainter extends CustomPainter {
     }
     canvas.drawPath(surface, surfacePaint);
 
+    final roofRippleT = reduceMotion
+        ? (impactT > 0 ? 0.22 : 0.0)
+        : ((impactT - 0.16) / 0.72).clamp(0.0, 1.0);
+    final roofRippleFade = reduceMotion
+        ? (impactT > 0 ? 0.34 : 0.0)
+        : math.pow(1 - roofRippleT, 1.35).toDouble();
+    if (roofRippleT > 0 && roofRippleFade > 0.01) {
+      final roofCenter = Offset(size.width / 2, size.height * 0.465);
+      final easedRoofRipple = Curves.easeOutCubic.transform(roofRippleT);
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: roofCenter,
+          width: 7 + size.width * 0.53 * easedRoofRipple,
+          height: 3 + size.height * 0.18 * easedRoofRipple,
+        ),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = highContrast ? 1.35 : 1.05
+          ..color = Colors.white.withValues(alpha: 0.58 * roofRippleFade),
+      );
+
+      final echoT = ((roofRippleT - 0.16) / 0.84).clamp(0.0, 1.0);
+      if (echoT > 0) {
+        canvas.drawOval(
+          Rect.fromCenter(
+            center: roofCenter,
+            width: 6 + size.width * 0.40 * Curves.easeOut.transform(echoT),
+            height: 2.5 + size.height * 0.13 * Curves.easeOut.transform(echoT),
+          ),
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.85
+            ..color = palette.rippleTint.withValues(
+              alpha: 0.34 * (1 - echoT) * roofRippleFade,
+            ),
+        );
+      }
+    }
+
     if (pressureT > 0 || (impactT > 0 && impactT < 1)) {
       final rippleT = Curves.easeOutCubic.transform(impactT);
       final fade = math.pow(1 - impactT, 1.35).toDouble();
@@ -1628,7 +2179,8 @@ class _PrimaryLiquidPainter extends CustomPainter {
   bool shouldRepaint(covariant _PrimaryLiquidPainter oldDelegate) =>
       oldDelegate.touchOrigin != touchOrigin ||
       oldDelegate.highContrast != highContrast ||
-      oldDelegate.palette != palette;
+      oldDelegate.palette != palette ||
+      oldDelegate.reduceMotion != reduceMotion;
 }
 
 class _GlassTabButton extends StatelessWidget {
@@ -1636,6 +2188,7 @@ class _GlassTabButton extends StatelessWidget {
     super.key,
     required this.tab,
     required this.palette,
+    required this.brightness,
     required this.selected,
     required this.pressed,
     required this.reduceMotion,
@@ -1646,6 +2199,7 @@ class _GlassTabButton extends StatelessWidget {
 
   final _TabSpec tab;
   final _LiquidNavPalette palette;
+  final Brightness brightness;
   final bool selected;
   final bool pressed;
   final bool reduceMotion;
@@ -1655,8 +2209,9 @@ class _GlassTabButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final active = palette.tabAccent;
-    const inactive = Color(0xB82E343D);
+    final isDark = brightness == Brightness.dark;
+    final active = isDark ? palette.buttonMid : palette.tabAccent;
+    final inactive = isDark ? const Color(0xDBE6EBF2) : const Color(0xB82E343D);
     final duration = reduceMotion
         ? Duration.zero
         : const Duration(milliseconds: 220);
